@@ -86,4 +86,49 @@ public class GameAPI : MonoBehaviour
             }
         }
     }
+
+    public IEnumerator CollectResources(string playerName, Action<PlayerModel> onSuccess)
+    {
+        using (UnityWebRequest request = new UnityWebRequest($"{baseUrl}/collect/{playerName}", "POST"))
+        {
+            string jsonData = JsonConvert.SerializeObject(new { });
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonData);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+
+            yield return request.SendWebRequest();
+
+            if (request.result != UnityWebRequest.Result.Success)        //실패 예러
+            {
+                Debug.LogError($"Error loging in : {request.error}");   //에러 로그
+            }
+            else
+            {
+                // 응답을 처리하여 PlayerModel 생성
+                string responseBody = request.downloadHandler.text;
+
+                try
+                {
+                    var responseData = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+
+                    //서버 응답에서 PlayerModel 생성
+                    PlayerModel playerModel = new PlayerModel("")
+                    {
+                        metal = Convert.ToInt32(responseData["metal"]),
+                        crystal = Convert.ToInt32(responseData["crystal"]),
+                        deuterium = Convert.ToInt32(responseData["deuterium"]),
+                        Planets = new List<PlanetModel>()
+                    };
+
+                    onSuccess?.Invoke(playerModel); //PlayerModel 반환
+                    Debug.Log("Login successful");
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Error processing login response: {ex.Message}");
+                }
+            }
+        }
+    }
 }
